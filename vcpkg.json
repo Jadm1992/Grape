@@ -1,0 +1,8 @@
+{
+  "name": "grape",
+  "version": "2.0.0",
+  "description": "A single-header, GPU-accelerated terminal emulator library for C++.",
+  "homepage": "https://github.com/Jadm1992/Grape",
+  "license": "MIT",
+  "dependencies": []
+}
