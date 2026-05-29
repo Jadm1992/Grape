@@ -25,7 +25,11 @@
 #include <string.h>
 #include "shl-htable.h"
 
+#ifdef __GNUC__
 #define COLD __attribute__((cold))
+#else
+#define COLD
+#endif
 
 struct htable {
 	/* KEEP IN SYNC WITH "struct shl_htable_int" */

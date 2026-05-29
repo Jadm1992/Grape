@@ -55,6 +55,10 @@
 #ifndef SHL_LLOG_H
 #define SHL_LLOG_H
 
+#ifndef __GNUC__
+#define __attribute__(x)
+#endif
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>

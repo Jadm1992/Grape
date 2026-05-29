@@ -12,6 +12,14 @@
 #ifndef SHL_MACRO_H
 #define SHL_MACRO_H
 
+#ifndef __GNUC__
+#ifndef __attribute__
+#define __attribute__(x)
+#endif
+#define __builtin_expect(x, y) (x)
+#define __builtin_clzll(x) (0)
+#endif
+
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
