@@ -1,8 +1,5 @@
 #define GRAPE_IMPLEMENTATION
 #include <grape.h>
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 
