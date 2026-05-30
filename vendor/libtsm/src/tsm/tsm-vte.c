@@ -2078,7 +2078,7 @@ static uint32_t vte_map(struct tsm_vte *vte, uint32_t val)
 
 static void do_osc_collect(struct tsm_vte *vte, uint32_t val) {
 	char buf[4];
-	int len = tsm_ucs4_to_utf8(val, buf);
+	unsigned int len = (unsigned int)tsm_ucs4_to_utf8(val, buf);
 	if (vte->osc_len + len > sizeof(vte->osc_arg) - 1) {
 		return;
 	}
