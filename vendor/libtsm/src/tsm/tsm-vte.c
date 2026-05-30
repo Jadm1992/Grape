@@ -699,12 +699,12 @@ static void vte_write_debug(struct tsm_vte *vte, const char *u8, size_t len,
 	/* in local echo mode, directly parse the data again */
 	if (!vte->parse_cnt && !(vte->flags & TSM_VTE_FLAG_SEND_RECEIVE_MODE)) {
 		if (vte->flags & TSM_VTE_FLAG_PREPEND_ESCAPE)
-			tsm_vte_input(vte, "\e", 1);
+			tsm_vte_input(vte, "\x1b", 1);
 		tsm_vte_input(vte, u8, len);
 	}
 
 	if (vte->flags & TSM_VTE_FLAG_PREPEND_ESCAPE)
-		vte->write_cb(vte, "\e", 1, vte->data);
+		vte->write_cb(vte, "\x1b", 1, vte->data);
 	vte->write_cb(vte, u8, len, vte->data);
 
 	vte->flags &= ~TSM_VTE_FLAG_PREPEND_ESCAPE;
@@ -838,7 +838,7 @@ void tsm_vte_hard_reset(struct tsm_vte *vte)
 
 static void send_primary_da(struct tsm_vte *vte)
 {
-	const static char str[] = "\e[?60;1;6;9;15c";
+	const static char str[] = "\x1b[?60;1;6;9;15c";
 	vte_write(vte, str, sizeof(str) - 1);
 }
 
@@ -1771,7 +1771,7 @@ static void csi_dev_attr(struct tsm_vte *vte)
 			send_primary_da(vte);
 			return;
 		} else if (vte->csi_flags & CSI_GT) {
-			vte_write(vte, "\e[>1;1;0c", 9);
+			vte_write(vte, "\x1b[>1;1;0c", 9);
 			return;
 		}
 	}
@@ -1786,13 +1786,13 @@ static void csi_dsr(struct tsm_vte *vte)
 	unsigned int x, y, len;
 
 	if (vte->csi_argv[0] == 5) {
-		vte_write(vte, "\e[0n", 4);
+		vte_write(vte, "\x1b[0n", 4);
 	} else if (vte->csi_argv[0] == 6) {
 		x = tsm_screen_get_cursor_x(vte->con);
 		y = tsm_screen_get_cursor_y(vte->con);
-		len = snprintf(buf, sizeof(buf), "\e[%u;%uR", y + 1, x + 1);
+		len = snprintf(buf, sizeof(buf), "\x1b[%u;%uR", y + 1, x + 1);
 		if (len >= sizeof(buf))
-			vte_write(vte, "\e[0;0R", 6);
+			vte_write(vte, "\x1b[0;0R", 6);
 		else
 			vte_write(vte, buf, len);
 	}
@@ -2089,7 +2089,7 @@ static void vte_write_xcolor(struct tsm_vte *vte, char *code,
 			     uint8_t r, uint8_t g, uint8_t b)
 {
 	char buf[32];
-	snprintf(buf, sizeof(buf), "\e]%s;rgb:%02x%02x/%02x%02x/%02x%02x%s",
+	snprintf(buf, sizeof(buf), "\x1b]%s;rgb:%02x%02x/%02x%02x/%02x%02x%s",
 		 code, r, r, g, g, b, b, end_seq);
 	vte_write(vte, buf, strlen(buf));
 }
@@ -2841,7 +2841,7 @@ bool tsm_vte_handle_keyboard(struct tsm_vte *vte, uint32_t keysym,
 			vte_write(vte, "\x09", 1);
 			return true;
 		case XKB_KEY_ISO_Left_Tab:
-			vte_write(vte, "\e[Z", 3);
+			vte_write(vte, "\x1b[Z", 3);
 			return true;
 		case XKB_KEY_Linefeed:
 			vte_write(vte, "\x0a", 1);
@@ -2875,7 +2875,7 @@ bool tsm_vte_handle_keyboard(struct tsm_vte *vte, uint32_t keysym,
 			return true;
 		case XKB_KEY_KP_Enter:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE) {
-				vte_write(vte, "\eOM", 3);
+				vte_write(vte, "\x1bOM", 3);
 				return true;
 			}
 			/* fallthrough */
@@ -2886,185 +2886,185 @@ bool tsm_vte_handle_keyboard(struct tsm_vte *vte, uint32_t keysym,
 				vte_write(vte, "\x0d", 1);
 			return true;
 		case XKB_KEY_Find:
-			vte_write(vte, "\e[1~", 4);
+			vte_write(vte, "\x1b[1~", 4);
 			return true;
 		case XKB_KEY_Insert:
-			vte_write(vte, "\e[2~", 4);
+			vte_write(vte, "\x1b[2~", 4);
 			return true;
 		case XKB_KEY_Delete:
-			vte_write(vte, "\e[3~", 4);
+			vte_write(vte, "\x1b[3~", 4);
 			return true;
 		case XKB_KEY_Select:
-			vte_write(vte, "\e[4~", 4);
+			vte_write(vte, "\x1b[4~", 4);
 			return true;
 		case XKB_KEY_Page_Up:
 		case XKB_KEY_KP_Page_Up:
-			vte_write(vte, "\e[5~", 4);
+			vte_write(vte, "\x1b[5~", 4);
 			return true;
 		case XKB_KEY_KP_Page_Down:
 		case XKB_KEY_Page_Down:
-			vte_write(vte, "\e[6~", 4);
+			vte_write(vte, "\x1b[6~", 4);
 			return true;
 		case XKB_KEY_Up:
 		case XKB_KEY_KP_Up:
 			if (mods & TSM_CONTROL_MASK) {
-				vte_write(vte, "\e[1;5A", 6);
+				vte_write(vte, "\x1b[1;5A", 6);
 			} else if (mods & TSM_SHIFT_MASK) {
-				vte_write(vte, "\e[1;2A", 6);
+				vte_write(vte, "\x1b[1;2A", 6);
 			} else if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE) {
-				vte_write(vte, "\eOA", 3);
+				vte_write(vte, "\x1bOA", 3);
 			} else {
-				vte_write(vte, "\e[A", 3);
+				vte_write(vte, "\x1b[A", 3);
 			}
 			return true;
 		case XKB_KEY_Down:
 		case XKB_KEY_KP_Down:
 			if (mods & TSM_CONTROL_MASK) {
-				vte_write(vte, "\e[1;5B", 6);
+				vte_write(vte, "\x1b[1;5B", 6);
 			} else if (mods & TSM_SHIFT_MASK) {
-				vte_write(vte, "\e[1;2B", 6);
+				vte_write(vte, "\x1b[1;2B", 6);
 			} else if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE) {
-				vte_write(vte, "\eOB", 3);
+				vte_write(vte, "\x1bOB", 3);
 			} else {
-				vte_write(vte, "\e[B", 3);
+				vte_write(vte, "\x1b[B", 3);
 			}
 			return true;
 		case XKB_KEY_Right:
 		case XKB_KEY_KP_Right:
 			if (mods & TSM_CONTROL_MASK) {
-				vte_write(vte, "\e[1;5C", 6);
+				vte_write(vte, "\x1b[1;5C", 6);
 			} else if (mods & TSM_SHIFT_MASK) {
-				vte_write(vte, "\e[1;2C", 6);
+				vte_write(vte, "\x1b[1;2C", 6);
 			} else if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE) {
-				vte_write(vte, "\eOC", 3);
+				vte_write(vte, "\x1bOC", 3);
 			} else {
-				vte_write(vte, "\e[C", 3);
+				vte_write(vte, "\x1b[C", 3);
 			}
 			return true;
 		case XKB_KEY_Left:
 		case XKB_KEY_KP_Left:
 			if (mods & TSM_CONTROL_MASK) {
-				vte_write(vte, "\e[1;5D", 6);
+				vte_write(vte, "\x1b[1;5D", 6);
 			} else if (mods & TSM_SHIFT_MASK) {
-				vte_write(vte, "\e[1;2D", 6);
+				vte_write(vte, "\x1b[1;2D", 6);
 			} else if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE) {
-				vte_write(vte, "\eOD", 3);
+				vte_write(vte, "\x1bOD", 3);
 			} else {
-				vte_write(vte, "\e[D", 3);
+				vte_write(vte, "\x1b[D", 3);
 			}
 			return true;
 		case XKB_KEY_KP_Insert:
 		case XKB_KEY_KP_0:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOp", 3);
+				vte_write(vte, "\x1bOp", 3);
 			else
 				vte_write(vte, "0", 1);
 			return true;
 		case XKB_KEY_KP_1:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOq", 3);
+				vte_write(vte, "\x1bOq", 3);
 			else
 				vte_write(vte, "1", 1);
 			return true;
 		case XKB_KEY_KP_2:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOr", 3);
+				vte_write(vte, "\x1bOr", 3);
 			else
 				vte_write(vte, "2", 1);
 			return true;
 		case XKB_KEY_KP_3:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOs", 3);
+				vte_write(vte, "\x1bOs", 3);
 			else
 				vte_write(vte, "3", 1);
 			return true;
 		case XKB_KEY_KP_4:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOt", 3);
+				vte_write(vte, "\x1bOt", 3);
 			else
 				vte_write(vte, "4", 1);
 			return true;
 		case XKB_KEY_KP_5:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOu", 3);
+				vte_write(vte, "\x1bOu", 3);
 			else
 				vte_write(vte, "5", 1);
 			return true;
 		case XKB_KEY_KP_6:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOv", 3);
+				vte_write(vte, "\x1bOv", 3);
 			else
 				vte_write(vte, "6", 1);
 			return true;
 		case XKB_KEY_KP_7:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOw", 3);
+				vte_write(vte, "\x1bOw", 3);
 			else
 				vte_write(vte, "7", 1);
 			return true;
 		case XKB_KEY_KP_8:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOx", 3);
+				vte_write(vte, "\x1bOx", 3);
 			else
 				vte_write(vte, "8", 1);
 			return true;
 		case XKB_KEY_KP_9:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOy", 3);
+				vte_write(vte, "\x1bOy", 3);
 			else
 				vte_write(vte, "9", 1);
 			return true;
 		case XKB_KEY_KP_Subtract:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOm", 3);
+				vte_write(vte, "\x1bOm", 3);
 			else
 				vte_write(vte, "-", 1);
 			return true;
 		case XKB_KEY_KP_Separator:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOl", 3);
+				vte_write(vte, "\x1bOl", 3);
 			else
 				vte_write(vte, ",", 1);
 			return true;
 		case XKB_KEY_KP_Delete:
 		case XKB_KEY_KP_Decimal:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOn", 3);
+				vte_write(vte, "\x1bOn", 3);
 			else
 				vte_write(vte, ".", 1);
 			return true;
 		case XKB_KEY_KP_Equal:
 		case XKB_KEY_KP_Divide:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOj", 3);
+				vte_write(vte, "\x1bOj", 3);
 			else
 				vte_write(vte, "/", 1);
 			return true;
 		case XKB_KEY_KP_Multiply:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOo", 3);
+				vte_write(vte, "\x1bOo", 3);
 			else
 				vte_write(vte, "*", 1);
 			return true;
 		case XKB_KEY_KP_Add:
 			if (vte->flags & TSM_VTE_FLAG_KEYPAD_APPLICATION_MODE)
-				vte_write(vte, "\eOk", 3);
+				vte_write(vte, "\x1bOk", 3);
 			else
 				vte_write(vte, "+", 1);
 			return true;
 		case XKB_KEY_Home:
 		case XKB_KEY_KP_Home:
 			if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE)
-				vte_write(vte, "\eOH", 3);
+				vte_write(vte, "\x1bOH", 3);
 			else
-				vte_write(vte, "\e[H", 3);
+				vte_write(vte, "\x1b[H", 3);
 			return true;
 		case XKB_KEY_End:
 		case XKB_KEY_KP_End:
 			if (vte->flags & TSM_VTE_FLAG_CURSOR_KEY_MODE)
-				vte_write(vte, "\eOF", 3);
+				vte_write(vte, "\x1bOF", 3);
 			else
-				vte_write(vte, "\e[F", 3);
+				vte_write(vte, "\x1b[F", 3);
 			return true;
 		case XKB_KEY_KP_Space:
 			vte_write(vte, " ", 1);
@@ -3079,133 +3079,133 @@ bool tsm_vte_handle_keyboard(struct tsm_vte *vte, uint32_t keysym,
 		case XKB_KEY_F1:
 		case XKB_KEY_KP_F1:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[23~", 5);
+				vte_write(vte, "\x1b[23~", 5);
 			else
-				vte_write(vte, "\eOP", 3);
+				vte_write(vte, "\x1bOP", 3);
 			return true;
 		case XKB_KEY_F2:
 		case XKB_KEY_KP_F2:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[24~", 5);
+				vte_write(vte, "\x1b[24~", 5);
 			else
-				vte_write(vte, "\eOQ", 3);
+				vte_write(vte, "\x1bOQ", 3);
 			return true;
 		case XKB_KEY_F3:
 		case XKB_KEY_KP_F3:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[25~", 5);
+				vte_write(vte, "\x1b[25~", 5);
 			else
-				vte_write(vte, "\eOR", 3);
+				vte_write(vte, "\x1bOR", 3);
 			return true;
 		case XKB_KEY_F4:
 		case XKB_KEY_KP_F4:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[1;2S", 6);
-				vte_write(vte, "\e[26~", 5);
+				//vte_write(vte, "\x1b[1;2S", 6);
+				vte_write(vte, "\x1b[26~", 5);
 			else
-				vte_write(vte, "\eOS", 3);
+				vte_write(vte, "\x1bOS", 3);
 			return true;
 		case XKB_KEY_F5:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[15;2~", 7);
-				vte_write(vte, "\e[28~", 5);
+				//vte_write(vte, "\x1b[15;2~", 7);
+				vte_write(vte, "\x1b[28~", 5);
 			else
-				vte_write(vte, "\e[15~", 5);
+				vte_write(vte, "\x1b[15~", 5);
 			return true;
 		case XKB_KEY_F6:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[17;2~", 7);
-				vte_write(vte, "\e[29~", 5);
+				//vte_write(vte, "\x1b[17;2~", 7);
+				vte_write(vte, "\x1b[29~", 5);
 			else
-				vte_write(vte, "\e[17~", 5);
+				vte_write(vte, "\x1b[17~", 5);
 			return true;
 		case XKB_KEY_F7:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[18;2~", 7);
-				vte_write(vte, "\e[31~", 5);
+				//vte_write(vte, "\x1b[18;2~", 7);
+				vte_write(vte, "\x1b[31~", 5);
 			else
-				vte_write(vte, "\e[18~", 5);
+				vte_write(vte, "\x1b[18~", 5);
 			return true;
 		case XKB_KEY_F8:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[19;2~", 7);
-				vte_write(vte, "\e[32~", 5);
+				//vte_write(vte, "\x1b[19;2~", 7);
+				vte_write(vte, "\x1b[32~", 5);
 			else
-				vte_write(vte, "\e[19~", 5);
+				vte_write(vte, "\x1b[19~", 5);
 			return true;
 		case XKB_KEY_F9:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[20;2~", 7);
-				vte_write(vte, "\e[33~", 5);
+				//vte_write(vte, "\x1b[20;2~", 7);
+				vte_write(vte, "\x1b[33~", 5);
 			else
-				vte_write(vte, "\e[20~", 5);
+				vte_write(vte, "\x1b[20~", 5);
 			return true;
 		case XKB_KEY_F10:
 			if (mods & TSM_SHIFT_MASK)
-				//vte_write(vte, "\e[21;2~", 7);
-				vte_write(vte, "\e[34~", 5);
+				//vte_write(vte, "\x1b[21;2~", 7);
+				vte_write(vte, "\x1b[34~", 5);
 			else
-				vte_write(vte, "\e[21~", 5);
+				vte_write(vte, "\x1b[21~", 5);
 			return true;
 		case XKB_KEY_F11:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[23;2~", 7);
+				vte_write(vte, "\x1b[23;2~", 7);
 			else
-				vte_write(vte, "\e[23~", 5);
+				vte_write(vte, "\x1b[23~", 5);
 			return true;
 		case XKB_KEY_F12:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[24;2~", 7);
+				vte_write(vte, "\x1b[24;2~", 7);
 			else
-				vte_write(vte, "\e[24~", 5);
+				vte_write(vte, "\x1b[24~", 5);
 			return true;
 		case XKB_KEY_F13:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[25;2~", 7);
+				vte_write(vte, "\x1b[25;2~", 7);
 			else
-				vte_write(vte, "\e[25~", 5);
+				vte_write(vte, "\x1b[25~", 5);
 			return true;
 		case XKB_KEY_F14:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[26;2~", 7);
+				vte_write(vte, "\x1b[26;2~", 7);
 			else
-				vte_write(vte, "\e[26~", 5);
+				vte_write(vte, "\x1b[26~", 5);
 			return true;
 		case XKB_KEY_F15:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[28;2~", 7);
+				vte_write(vte, "\x1b[28;2~", 7);
 			else
-				vte_write(vte, "\e[28~", 5);
+				vte_write(vte, "\x1b[28~", 5);
 			return true;
 		case XKB_KEY_F16:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[29;2~", 7);
+				vte_write(vte, "\x1b[29;2~", 7);
 			else
-				vte_write(vte, "\e[29~", 5);
+				vte_write(vte, "\x1b[29~", 5);
 			return true;
 		case XKB_KEY_F17:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[31;2~", 7);
+				vte_write(vte, "\x1b[31;2~", 7);
 			else
-				vte_write(vte, "\e[31~", 5);
+				vte_write(vte, "\x1b[31~", 5);
 			return true;
 		case XKB_KEY_F18:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[32;2~", 7);
+				vte_write(vte, "\x1b[32;2~", 7);
 			else
-				vte_write(vte, "\e[32~", 5);
+				vte_write(vte, "\x1b[32~", 5);
 			return true;
 		case XKB_KEY_F19:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[33;2~", 7);
+				vte_write(vte, "\x1b[33;2~", 7);
 			else
-				vte_write(vte, "\e[33~", 5);
+				vte_write(vte, "\x1b[33~", 5);
 			return true;
 		case XKB_KEY_F20:
 			if (mods & TSM_SHIFT_MASK)
-				vte_write(vte, "\e[34;2~", 7);
+				vte_write(vte, "\x1b[34;2~", 7);
 			else
-				vte_write(vte, "\e[34~", 5);
+				vte_write(vte, "\x1b[34~", 5);
 			return true;
 	}
 
@@ -3286,7 +3286,7 @@ bool tsm_vte_handle_mouse(struct tsm_vte *vte, unsigned int cell_x,
 		}
 
 		reply_flags = (button | modifiers) + 0x20;
-		snprintf((char*) &buffer, sizeof(buffer), "\e[M%c%c%c", reply_flags, cell_x, cell_y);
+		snprintf((char*) &buffer, sizeof(buffer), "\x1b[M%c%c%c", reply_flags, cell_x, cell_y);
 
 		vte_write(vte, buffer, strlen(buffer));
 		return true;
@@ -3303,7 +3303,7 @@ bool tsm_vte_handle_mouse(struct tsm_vte *vte, unsigned int cell_x,
 			vte->mouse_last_row = cell_y;
 		}
 
-		snprintf((char*) &buffer, sizeof(buffer), "\e[<%d;%d;%d%c", reply_flags, cell_x, cell_y, pressed ? 'M' : 'm');
+		snprintf((char*) &buffer, sizeof(buffer), "\x1b[<%d;%d;%d%c", reply_flags, cell_x, cell_y, pressed ? 'M' : 'm');
 
 		vte_write(vte, buffer, strlen(buffer));
 		return true;
@@ -3313,7 +3313,7 @@ bool tsm_vte_handle_mouse(struct tsm_vte *vte, unsigned int cell_x,
 			pressed = true;
 		}
 
-		snprintf((char*) &buffer, sizeof(buffer), "\e[<%d;%d;%d%c", reply_flags, pixel_x, pixel_y, pressed ? 'M' : 'm');
+		snprintf((char*) &buffer, sizeof(buffer), "\x1b[<%d;%d;%d%c", reply_flags, pixel_x, pixel_y, pressed ? 'M' : 'm');
 
 		vte_write(vte, buffer, strlen(buffer));
 		return true;

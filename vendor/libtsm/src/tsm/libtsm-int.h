@@ -34,6 +34,10 @@
 #include "libtsm.h"
 #include "shl-llog.h"
 
+#ifdef _MSC_VER
+#define strdup _strdup
+#endif
+
 #ifdef __GNUC__
 #define SHL_EXPORT __attribute__((visibility("default")))
 #else
