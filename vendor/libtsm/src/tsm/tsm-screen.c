@@ -291,7 +291,8 @@ static void screen_scroll_up(struct tsm_screen *con, unsigned int num)
 	 * also be small enough so we do not get stack overflows. */
 	if (num > 128) {
 		screen_scroll_up(con, 128);
-		return screen_scroll_up(con, num - 128);
+		screen_scroll_up(con, num - 128);
+		return;
 	}
 	struct line **cache = malloc(num * sizeof(struct line*));
 	if (!cache) return;
@@ -361,7 +362,8 @@ static void screen_scroll_down(struct tsm_screen *con, unsigned int num)
 	/* see screen_scroll_up() for an explanation */
 	if (num > 128) {
 		screen_scroll_down(con, 128);
-		return screen_scroll_down(con, num - 128);
+		screen_scroll_down(con, num - 128);
+		return;
 	}
 	struct line **cache = malloc(num * sizeof(struct line*));
 	if (!cache) return;
