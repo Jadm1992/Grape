@@ -46,11 +46,18 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 }
 
 int main() {
-    if (!glfwInit()) return -1;
+    if (!glfwInit()) {
+        std::cerr << "ERROR: Failed to initialize GLFW.\n";
+        return -1;
+    }
     
     // We can use fixed pipeline OpenGL for this visual test since it's just quads
     GLFWwindow* window = glfwCreateWindow(800, 600, "Grape v2.0 - Headless Data Renderer Test", NULL, NULL);
-    if (!window) return -1;
+    if (!window) {
+        std::cerr << "ERROR: Failed to create GLFW window. Are you running over an SSH connection without a display?\n";
+        glfwTerminate();
+        return -1;
+    }
     
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable VSync

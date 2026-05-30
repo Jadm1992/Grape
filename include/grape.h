@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstddef>
+#include <iostream>
 
 namespace grape {
 
@@ -261,7 +262,9 @@ public:
     float renderY = 0;
 
     Impl(int cols, int rows, const Config& cfg) : config(cfg) {
-        fontEngine.init(config.font_family, config.font_size);
+        if (!fontEngine.init(config.font_family, config.font_size)) {
+            std::cerr << "ERROR: Failed to load font: " << config.font_family << "\n";
+        }
         
         tsm_screen_new(&screen, tsm_log, this);
         tsm_vte_new(&vte, screen, tsm_write_cb, this, tsm_log, this);
