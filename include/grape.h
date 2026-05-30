@@ -480,6 +480,13 @@ void Terminal::writeInput(const char* data, size_t len) {
 }
 
 void Terminal::sendKey(Key key, uint8_t modifiers, uint32_t unicode_char) {
+    if (unicode_char == 'l' && (modifiers & ModCtrl)) {
+        std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
+        tsm_screen_erase_screen(pimpl->screen, false);
+        tsm_screen_clear_sb(pimpl->screen);
+        pimpl->dirty = true;
+    }
+    
     uint32_t keysym = GRAPE_XKB_KEY_NoSymbol;
     switch (key) {
         case Key::Up: keysym = GRAPE_XKB_KEY_Up; break;
