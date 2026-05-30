@@ -20,7 +20,7 @@ struct Config {
 #else
     std::string font_family = "/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf";
 #endif
-    int font_size = 28;
+    int font_size = 14;
 
     Color background = {30, 30, 46};
     Color foreground = {205, 214, 244};
