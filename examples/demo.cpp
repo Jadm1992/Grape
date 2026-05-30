@@ -103,8 +103,10 @@ int main() {
         int cols = width / terminal.getCellWidth();
         int rows = height / terminal.getCellHeight();
         static int last_cols = 0, last_rows = 0;
-        if (cols > 0 && rows > 0 && (cols != last_cols || rows != last_rows)) {
-            terminal.resize(cols, rows);
+        if (cols != last_cols || rows != last_rows) {
+            if (cols > 0 && rows > 0) {
+                terminal.resize(cols, rows);
+            }
             last_cols = cols;
             last_rows = rows;
         }
