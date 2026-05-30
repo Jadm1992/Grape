@@ -440,10 +440,13 @@ Terminal::~Terminal() {
 }
 
 void Terminal::resize(int cols, int rows) {
-    std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
     if (cols <= 0 || rows <= 0) return;
     
-    tsm_screen_resize(pimpl->screen, cols, rows);
+    {
+        std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
+        tsm_screen_resize(pimpl->screen, cols, rows);
+    }
+    
 #ifdef _WIN32
     if (pimpl->hPC != INVALID_HANDLE_VALUE) {
         COORD size = {(SHORT)cols, (SHORT)rows};
