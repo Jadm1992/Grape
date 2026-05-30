@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <iostream>
+#include <mutex>
 
 namespace grape {
 
@@ -250,13 +251,16 @@ public:
 
 #ifdef _WIN32
     HPCON hPC = INVALID_HANDLE_VALUE;
-    HANDLE hPipeIn = INVALID_HANDLE_VALUE;
-    HANDLE hPipeOut = INVALID_HANDLE_VALUE;
+    HANDLE hAppRead = INVALID_HANDLE_VALUE;
+    HANDLE hAppWrite = INVALID_HANDLE_VALUE;
     PROCESS_INFORMATION pi = {0};
 #else
     int pty_master_fd = -1;
     pid_t pty_child_pid = -1;
 #endif
+
+    std::mutex tsm_mutex;
+
 
     float renderX = 0;
     float renderY = 0;
@@ -272,12 +276,12 @@ public:
         tsm_screen_set_max_sb(screen, 10000);
 
 #ifdef _WIN32
-        HANDLE hPipePTYIn = INVALID_HANDLE_VALUE;
-        HANDLE hPipePTYOut = INVALID_HANDLE_VALUE;
-        CreatePipe(&hPipePTYIn, &hPipeOut, NULL, 0);
-        CreatePipe(&hPipeIn, &hPipePTYOut, NULL, 0);
+        HANDLE hPtyRead = INVALID_HANDLE_VALUE;
+        HANDLE hPtyWrite = INVALID_HANDLE_VALUE;
+        CreatePipe(&hPtyRead, &hAppWrite, NULL, 0); // AppWrite -> PtyRead
+        CreatePipe(&hAppRead, &hPtyWrite, NULL, 0); // PtyWrite -> AppRead
         COORD size = {(SHORT)cols, (SHORT)rows};
-        CreatePseudoConsole(size, hPipePTYIn, hPipePTYOut, 0, &hPC);
+        CreatePseudoConsole(size, hPtyRead, hPtyWrite, 0, &hPC);
         STARTUPINFOEXW siEx{0};
         siEx.StartupInfo.cb = sizeof(STARTUPINFOEXW);
         size_t bytesRequired;
@@ -287,8 +291,8 @@ public:
         UpdateProcThreadAttribute(siEx.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(hPC), NULL, NULL);
         wchar_t cmd[] = L"powershell.exe";
         CreateProcessW(NULL, cmd, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &siEx.StartupInfo, &pi);
-        CloseHandle(hPipePTYIn);
-        CloseHandle(hPipePTYOut);
+        CloseHandle(hPtyRead);
+        CloseHandle(hPtyWrite);
         HeapFree(GetProcessHeap(), 0, siEx.lpAttributeList);
 #else
         pty_child_pid = forkpty(&pty_master_fd, NULL, NULL, NULL);
@@ -307,8 +311,8 @@ public:
         if (pty_thread.joinable()) pty_thread.join();
 #ifdef _WIN32
         if (hPC != INVALID_HANDLE_VALUE) ClosePseudoConsole(hPC);
-        if (hPipeIn != INVALID_HANDLE_VALUE) CloseHandle(hPipeIn);
-        if (hPipeOut != INVALID_HANDLE_VALUE) CloseHandle(hPipeOut);
+        if (hAppRead != INVALID_HANDLE_VALUE) CloseHandle(hAppRead);
+        if (hAppWrite != INVALID_HANDLE_VALUE) CloseHandle(hAppWrite);
         if (pi.hProcess) CloseHandle(pi.hProcess);
         if (pi.hThread) CloseHandle(pi.hThread);
 #else
@@ -327,9 +331,9 @@ public:
     static void tsm_write_cb(struct tsm_vte *vte, const char *u8, size_t len, void *data) {
         Impl* term = static_cast<Impl*>(data);
 #ifdef _WIN32
-        if (term->hPipeIn != INVALID_HANDLE_VALUE) {
+        if (term->hAppWrite != INVALID_HANDLE_VALUE) {
             DWORD bytesWritten;
-            WriteFile(term->hPipeIn, u8, (DWORD)len, &bytesWritten, NULL);
+            WriteFile(term->hAppWrite, u8, (DWORD)len, &bytesWritten, NULL);
         }
 #else
         if (term->pty_master_fd != -1) {
@@ -399,35 +403,31 @@ public:
     }
 
     void ptyThreadFunc() {
-        char buffer[4096];
-        while (running) {
 #ifdef _WIN32
-            DWORD bytesRead;
-            if (ReadFile(hPipeOut, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
-                tsm_vte_input(vte, buffer, bytesRead);
-                dirty = true;
-            } else {
-                running = false;
-                break;
-            }
+        char buf[4096];
+        DWORD bytesRead;
+        while (running && ReadFile(hAppRead, buf, sizeof(buf), &bytesRead, NULL)) {
+            std::lock_guard<std::mutex> lock(tsm_mutex);
+            tsm_vte_input(vte, buf, bytesRead);
+            dirty = true;
+        }
 #else
+        char buf[4096];
+        while (running) {
             fd_set read_fds;
             FD_ZERO(&read_fds);
             FD_SET(pty_master_fd, &read_fds);
             struct timeval timeout = {0, 10000};
             int ret = select(pty_master_fd + 1, &read_fds, NULL, NULL, &timeout);
             if (ret > 0 && FD_ISSET(pty_master_fd, &read_fds)) {
-                ssize_t bytes_read = read(pty_master_fd, buffer, sizeof(buffer));
-                if (bytes_read > 0) {
-                    tsm_vte_input(vte, buffer, bytes_read);
-                    dirty = true;
-                } else {
-                    running = false;
-                    break;
-                }
+                int bytes = read(pty_master_fd, buf, sizeof(buf));
+                if (bytes <= 0) break;
+                std::lock_guard<std::mutex> lock(tsm_mutex);
+                tsm_vte_input(vte, buf, bytes);
+                dirty = true;
             }
-#endif
         }
+#endif
     }
 };
 
@@ -440,6 +440,9 @@ Terminal::~Terminal() {
 }
 
 void Terminal::resize(int cols, int rows) {
+    std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
+    if (cols <= 0 || rows <= 0) return;
+    
     tsm_screen_resize(pimpl->screen, cols, rows);
 #ifdef _WIN32
     if (pimpl->hPC != INVALID_HANDLE_VALUE) {
@@ -461,9 +464,9 @@ void Terminal::resize(int cols, int rows) {
 
 void Terminal::writeInput(const char* data, size_t len) {
 #ifdef _WIN32
-    if (pimpl->hPipeIn != INVALID_HANDLE_VALUE) {
+    if (pimpl->hAppWrite != INVALID_HANDLE_VALUE) {
         DWORD bytesWritten;
-        WriteFile(pimpl->hPipeIn, data, (DWORD)len, &bytesWritten, NULL);
+        WriteFile(pimpl->hAppWrite, data, (DWORD)len, &bytesWritten, NULL);
     }
 #else
     if (pimpl->pty_master_fd != -1) {
@@ -499,11 +502,15 @@ void Terminal::sendKey(Key key, uint8_t modifiers, uint32_t unicode_char) {
     if (modifiers & ModAlt)   tsm_mods |= TSM_ALT_MASK;
     if (modifiers & ModLogo)  tsm_mods |= TSM_LOGO_MASK;
 
-    tsm_vte_handle_keyboard(pimpl->vte, keysym, unicode_char, tsm_mods, unicode_char);
+    std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
+    if (pimpl->vte) {
+        tsm_vte_handle_keyboard(pimpl->vte, keysym, unicode_char, tsm_mods, unicode_char);
+    }
     pimpl->dirty = true;
 }
 
 void Terminal::scroll(double yoffset) {
+    std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
     if (yoffset > 0) tsm_screen_sb_up(pimpl->screen, 3);
     else if (yoffset < 0) tsm_screen_sb_down(pimpl->screen, 3);
     pimpl->dirty = true;
@@ -514,26 +521,28 @@ const TextureAtlas& Terminal::getAtlas() const {
 }
 
 const std::vector<Quad>& Terminal::getQuads(float x, float y) {
-    pimpl->dirty = false;
-    pimpl->frameQuads.clear();
-    pimpl->renderX = x;
-    pimpl->renderY = y;
-    tsm_screen_draw(pimpl->screen, Impl::draw_cb, pimpl);
-    
-    // Draw Cursor
-    unsigned int cx = tsm_screen_get_cursor_x(pimpl->screen);
-    unsigned int cy = tsm_screen_get_cursor_y(pimpl->screen);
-    
-    Quad cursorQuad;
-    cursorQuad.x0 = x + cx * pimpl->fontEngine.cellWidth;
-    cursorQuad.y0 = y + cy * pimpl->fontEngine.cellHeight;
-    cursorQuad.x1 = cursorQuad.x0 + pimpl->fontEngine.cellWidth;
-    cursorQuad.y1 = cursorQuad.y0 + pimpl->fontEngine.cellHeight;
-    cursorQuad.u0 = cursorQuad.v0 = cursorQuad.u1 = cursorQuad.v1 = 0;
-    cursorQuad.fg = pimpl->config.foreground;
-    cursorQuad.bg = pimpl->config.foreground;
-    pimpl->frameQuads.push_back(cursorQuad);
-
+    std::lock_guard<std::mutex> lock(pimpl->tsm_mutex);
+    if (pimpl->dirty) {
+        pimpl->renderX = x;
+        pimpl->renderY = y;
+        pimpl->frameQuads.clear();
+        tsm_screen_draw(pimpl->screen, Impl::draw_cb, pimpl.get());
+        pimpl->dirty = false;
+        
+        // Draw Cursor
+        unsigned int cx = tsm_screen_get_cursor_x(pimpl->screen);
+        unsigned int cy = tsm_screen_get_cursor_y(pimpl->screen);
+        
+        Quad cursorQuad;
+        cursorQuad.x0 = x + cx * pimpl->fontEngine.cellWidth;
+        cursorQuad.y0 = y + cy * pimpl->fontEngine.cellHeight;
+        cursorQuad.x1 = cursorQuad.x0 + pimpl->fontEngine.cellWidth;
+        cursorQuad.y1 = cursorQuad.y0 + pimpl->fontEngine.cellHeight;
+        cursorQuad.u0 = cursorQuad.v0 = cursorQuad.u1 = cursorQuad.v1 = 0;
+        cursorQuad.fg = pimpl->config.foreground;
+        cursorQuad.bg = pimpl->config.foreground;
+        pimpl->frameQuads.push_back(cursorQuad);
+    }
     return pimpl->frameQuads;
 }
 
