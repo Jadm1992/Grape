@@ -1,6 +1,6 @@
 # Grape
 
-Grape is a zero-dependency, single-header, GPU-accelerated terminal emulator library for C++.
+Grape is a zero-dependency, GPU-accelerated terminal emulator library for C++.
 
 It provides a lightweight, performant terminal emulator component that can be easily integrated into any C++ application. It handles the PTY, ANSI escape sequences, and font rasterization natively, outputting raw geometry (`std::vector<Quad>`) that you can draw using OpenGL, Vulkan, DirectX, or any custom engine renderer.
 
@@ -13,8 +13,10 @@ To use the core library in your own project, you only need:
 
 *Note: `glfw3` and OpenGL are only required if you want to build the example demo.*
 
-### Usage (Drop-in Single Header)
-Grape is an `stb`-style single-header library. To use it in your project, simply drop `include/grape.h` into your source tree. 
+### Usage
+Grape is designed to be as easy to integrate as possible. To use it in your project:
+1. Drop `include/grape.h` into your source tree.
+2. Drop the `vendor/libtsm` directory into your source tree and compile its `.c` files alongside your application.
 
 In exactly **one** C++ file, define the implementation macro before including the header:
 
@@ -49,11 +51,12 @@ make
 ```
 
 ## Project Structure Overview
-- `include/`: Contains the entire core engine in a single file: `grape.h`.
+- `include/`: Contains the C++ interface and engine (`grape.h`).
+- `vendor/libtsm/`: Vendored C implementation of the VT100 parser.
 - `examples/`: Example applications demonstrating how to integrate Grape into a host application window.
 
 ## Key Internal Dependencies
-- **libtsm**: Core state machine logic and VT100/ANSI parsing.
+- **libtsm**: Core state machine logic and VT100/ANSI parsing (compiled separately as C code).
 - **stb_truetype**: Embedded directly inside `grape.h` for font loading and texture atlas rasterization.
 
 ## License
