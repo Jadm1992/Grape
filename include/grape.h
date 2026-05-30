@@ -308,12 +308,11 @@ public:
 
     ~Impl() {
         running = false;
-        if (pty_thread.joinable()) pty_thread.join();
 #ifdef _WIN32
         if (hPC != INVALID_HANDLE_VALUE) ClosePseudoConsole(hPC);
         if (hAppRead != INVALID_HANDLE_VALUE) CloseHandle(hAppRead);
         if (hAppWrite != INVALID_HANDLE_VALUE) CloseHandle(hAppWrite);
-        if (pi.hProcess) CloseHandle(pi.hProcess);
+        if (pi.hProcess) { TerminateProcess(pi.hProcess, 0); CloseHandle(pi.hProcess); }
         if (pi.hThread) CloseHandle(pi.hThread);
 #else
         if (pty_master_fd != -1) close(pty_master_fd);
@@ -322,6 +321,7 @@ public:
             waitpid(pty_child_pid, &status, 0);
         }
 #endif
+        if (pty_thread.joinable()) pty_thread.join();
         if (vte) tsm_vte_unref(vte);
         if (screen) tsm_screen_unref(screen);
     }
