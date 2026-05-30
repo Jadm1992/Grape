@@ -164,7 +164,7 @@ int main() {
                 glTexCoordPointer(2, GL_FLOAT, sizeof(Vertex), &vertices[0].u);
                 glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), &vertices[0].r);
 
-                glDrawArrays(GL_QUADS, 0, vertices.size());
+                glDrawArrays(GL_QUADS, 0, (GLsizei)vertices.size());
 
                 glDisableClientState(GL_COLOR_ARRAY);
                 glDisableClientState(GL_TEXTURE_COORD_ARRAY);
