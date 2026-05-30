@@ -294,7 +294,7 @@ static void screen_scroll_up(struct tsm_screen *con, unsigned int num)
 		return screen_scroll_up(con, num - 128);
 	}
 	struct line **cache = malloc(num * sizeof(struct line*));
-	if (!cache) return -ENOMEM;
+	if (!cache) return;
 
 	for (i = 0; i < num; ++i) {
 		pos = con->margin_top + i;
@@ -364,7 +364,7 @@ static void screen_scroll_down(struct tsm_screen *con, unsigned int num)
 		return screen_scroll_down(con, num - 128);
 	}
 	struct line **cache = malloc(num * sizeof(struct line*));
-	if (!cache) return -ENOMEM;
+	if (!cache) return;
 
 	for (i = 0; i < num; ++i) {
 		cache[i] = con->lines[con->margin_bottom - i];

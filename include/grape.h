@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <iostream>
 #include <mutex>
+#include <functional>
 
 namespace grape {
 
@@ -125,6 +126,9 @@ private:
 #include <atomic>
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <mutex>
+#include <functional>
 #include <unordered_map>
 #include <cstring>
 #include <cmath>
@@ -241,6 +245,7 @@ public:
 
 class Terminal::Impl {
 public:
+    Terminal* term;
     Config config;
     FontEngine fontEngine;
     std::vector<Quad> frameQuads;
@@ -268,7 +273,7 @@ public:
     float renderX = 0;
     float renderY = 0;
 
-    Impl(int cols, int rows, const Config& cfg) : config(cfg) {
+    Impl(Terminal* owner, int cols, int rows, const Config& cfg) : term(owner), config(cfg) {
         if (!fontEngine.init(config.font_family, config.font_size)) {
             std::cerr << "ERROR: Failed to load font: " << config.font_family << "\n";
         }
@@ -429,7 +434,7 @@ public:
                     std::lock_guard<std::mutex> lock(tsm_mutex);
                     tsm_vte_input(vte, buf, bytes);
                     dirty = true;
-                    if (onUpdate) onUpdate();
+                    if (term->onUpdate) term->onUpdate();
                 }
             }
         }
@@ -438,7 +443,7 @@ public:
 };
 
 Terminal::Terminal(int cols, int rows, const Config& config) {
-    pimpl = new Impl(cols, rows, config);
+    pimpl = new Impl(this, cols, rows, config);
 }
 
 Terminal::~Terminal() {
