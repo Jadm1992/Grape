@@ -375,7 +375,11 @@ public:
         bgQuad.u0 = bgQuad.v0 = bgQuad.u1 = bgQuad.v1 = 0; // Top-left of atlas (assumes blank pixel)
         bgQuad.fg = bg;
         bgQuad.bg = bg;
-        term->frameQuads.push_back(bgQuad);
+        
+        bool isDefaultBg = (bg.r == term->config.background.r && bg.g == term->config.background.g && bg.b == term->config.background.b);
+        if (!isDefaultBg) {
+            term->frameQuads.push_back(bgQuad);
+        }
 
         // Foreground Glyph Quad
         if (codepoint != ' ') {
