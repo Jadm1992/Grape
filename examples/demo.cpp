@@ -45,6 +45,14 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     global_term->scroll(yoffset);
 }
 
+#include <vector>
+
+struct Vertex {
+    float x, y;
+    float u, v;
+    unsigned char r, g, b, a;
+};
+
 int main() {
     if (!glfwInit()) {
         std::cerr << "ERROR: Failed to initialize GLFW.\n";
@@ -128,23 +136,40 @@ int main() {
             glClear(GL_COLOR_BUFFER_BIT);
 
             glBindTexture(GL_TEXTURE_2D, texture);
-            glBegin(GL_QUADS);
+
+            static std::vector<Vertex> vertices;
+            vertices.clear();
+            vertices.reserve(quads.size() * 4);
+
             for (const auto& q : quads) {
-                if (q.u0 == 0 && q.v0 == 0) {
-                    glColor4ub(q.bg.r, q.bg.g, q.bg.b, 255);
-                    glTexCoord2f(0.0f, 0.0f); glVertex2f(q.x0, q.y0);
-                    glTexCoord2f(0.0f, 0.0f); glVertex2f(q.x1, q.y0);
-                    glTexCoord2f(0.0f, 0.0f); glVertex2f(q.x1, q.y1);
-                    glTexCoord2f(0.0f, 0.0f); glVertex2f(q.x0, q.y1);
-                } else {
-                    glColor4ub(q.fg.r, q.fg.g, q.fg.b, 255);
-                    glTexCoord2f(q.u0, q.v0); glVertex2f(q.x0, q.y0);
-                    glTexCoord2f(q.u1, q.v0); glVertex2f(q.x1, q.y0);
-                    glTexCoord2f(q.u1, q.v1); glVertex2f(q.x1, q.y1);
-                    glTexCoord2f(q.u0, q.v1); glVertex2f(q.x0, q.y1);
-                }
+                bool isBg = (q.u0 == 0 && q.v0 == 0);
+                grape::Color c = isBg ? q.bg : q.fg;
+                float u0 = isBg ? 0.0f : q.u0;
+                float v0 = isBg ? 0.0f : q.v0;
+                float u1 = isBg ? 0.0f : q.u1;
+                float v1 = isBg ? 0.0f : q.v1;
+                
+                vertices.push_back({ q.x0, q.y0, u0, v0, c.r, c.g, c.b, 255 });
+                vertices.push_back({ q.x1, q.y0, u1, v0, c.r, c.g, c.b, 255 });
+                vertices.push_back({ q.x1, q.y1, u1, v1, c.r, c.g, c.b, 255 });
+                vertices.push_back({ q.x0, q.y1, u0, v1, c.r, c.g, c.b, 255 });
             }
-            glEnd();
+
+            if (!vertices.empty()) {
+                glEnableClientState(GL_VERTEX_ARRAY);
+                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                glEnableClientState(GL_COLOR_ARRAY);
+
+                glVertexPointer(2, GL_FLOAT, sizeof(Vertex), &vertices[0].x);
+                glTexCoordPointer(2, GL_FLOAT, sizeof(Vertex), &vertices[0].u);
+                glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), &vertices[0].r);
+
+                glDrawArrays(GL_QUADS, 0, vertices.size());
+
+                glDisableClientState(GL_COLOR_ARRAY);
+                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+                glDisableClientState(GL_VERTEX_ARRAY);
+            }
 
             glfwSwapBuffers(window);
         }
