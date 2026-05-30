@@ -166,16 +166,16 @@ public:
 
         if (!stbtt_InitFont(&font, fontBuffer.data(), 0)) return false;
 
-        float scale = stbtt_ScaleForPixelHeight(&font, fontSize);
+        float scale = stbtt_ScaleForPixelHeight(&font, (float)fontSize);
         
         int ascent, descent, lineGap;
         stbtt_GetFontVMetrics(&font, &ascent, &descent, &lineGap);
-        ascent = std::round(ascent * scale);
-        descent = std::round(descent * scale);
+        ascent = (int)std::round(ascent * scale);
+        descent = (int)std::round(descent * scale);
         
         int advance, lsb;
         stbtt_GetCodepointHMetrics(&font, 'M', &advance, &lsb);
-        cellWidth = std::round(advance * scale);
+        cellWidth = (int)std::round(advance * scale);
         cellHeight = ascent - descent;
         baselineY = ascent;
 
@@ -526,7 +526,7 @@ const std::vector<Quad>& Terminal::getQuads(float x, float y) {
         pimpl->renderX = x;
         pimpl->renderY = y;
         pimpl->frameQuads.clear();
-        tsm_screen_draw(pimpl->screen, Impl::draw_cb, pimpl.get());
+        tsm_screen_draw(pimpl->screen, Impl::draw_cb, pimpl);
         pimpl->dirty = false;
         
         // Draw Cursor
