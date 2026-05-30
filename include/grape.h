@@ -143,6 +143,7 @@ private:
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <signal.h>
 #endif
 
 namespace grape {
@@ -317,14 +318,15 @@ public:
     ~Impl() {
         running = false;
 #ifdef _WIN32
+        if (pi.hProcess) { TerminateProcess(pi.hProcess, 0); CloseHandle(pi.hProcess); }
+        if (pi.hThread) CloseHandle(pi.hThread);
         if (hPC != INVALID_HANDLE_VALUE) ClosePseudoConsole(hPC);
         if (hAppRead != INVALID_HANDLE_VALUE) CloseHandle(hAppRead);
         if (hAppWrite != INVALID_HANDLE_VALUE) CloseHandle(hAppWrite);
-        if (pi.hProcess) { TerminateProcess(pi.hProcess, 0); CloseHandle(pi.hProcess); }
-        if (pi.hThread) CloseHandle(pi.hThread);
 #else
         if (pty_master_fd != -1) close(pty_master_fd);
         if (pty_child_pid > 0) {
+            kill(pty_child_pid, SIGKILL);
             int status;
             waitpid(pty_child_pid, &status, 0);
         }
