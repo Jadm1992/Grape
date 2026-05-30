@@ -68,6 +68,9 @@ int main() {
 
     grape::Config cfg;
     grape::Terminal terminal(80, 24, cfg);
+    terminal.onUpdate = []() {
+        glfwPostEmptyEvent(); // Instantly wake up the main thread from glfwWaitEventsTimeout
+    };
     global_term = &terminal;
 
     // 1. Host Application: Upload the atlas to the GPU
@@ -94,7 +97,7 @@ int main() {
     glEnable(GL_TEXTURE_2D);
 
     while (!glfwWindowShouldClose(window)) {
-        glfwWaitEventsTimeout(0.016); // Sleep CPU, cap at ~60fps if VSync fails
+        glfwWaitEvents(); // Sleep CPU indefinitely until an event arrives (like onUpdate or input)
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);

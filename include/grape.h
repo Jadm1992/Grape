@@ -88,6 +88,9 @@ public:
     int getCellWidth() const;
     int getCellHeight() const;
 
+    // Callback fired when the terminal needs a redraw
+    std::function<void()> onUpdate;
+
 private:
     class Impl;
     Impl* pimpl;
@@ -410,6 +413,7 @@ public:
             std::lock_guard<std::mutex> lock(tsm_mutex);
             tsm_vte_input(vte, buf, bytesRead);
             dirty = true;
+            if (term->onUpdate) term->onUpdate();
         }
 #else
         char buf[4096];
@@ -421,10 +425,12 @@ public:
             int ret = select(pty_master_fd + 1, &read_fds, NULL, NULL, &timeout);
             if (ret > 0 && FD_ISSET(pty_master_fd, &read_fds)) {
                 int bytes = read(pty_master_fd, buf, sizeof(buf));
-                if (bytes <= 0) break;
-                std::lock_guard<std::mutex> lock(tsm_mutex);
-                tsm_vte_input(vte, buf, bytes);
-                dirty = true;
+                if (bytes > 0) {
+                    std::lock_guard<std::mutex> lock(tsm_mutex);
+                    tsm_vte_input(vte, buf, bytes);
+                    dirty = true;
+                    if (onUpdate) onUpdate();
+                }
             }
         }
 #endif
